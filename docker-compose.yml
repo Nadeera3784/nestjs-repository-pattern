@@ -1,0 +1,60 @@
+version: '3.7'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+
+  database:
+    platform: linux/x86_64
+    container_name: database
+    image: mysql:5.7.44
+    ports:
+       - 3306:3306
+    expose:
+       - 3306
+    volumes:
+        - ./mysql/dbdata:/var/lib/mysql:delegated
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - app-network
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin:5.2.1
+    restart: unless-stopped
+    environment:
+      PMA_HOST: ${DB_HOST}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - database
+    ports:
+      - 8080:80
+    networks:
+      - app-network
+
+  app:
+    container_name: app
+    image: app:1.0.0
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 3000:3000
+    networks:
+      - app-network
+    depends_on:
+      - database
+    links:
+      - database
+    volumes:
+      - .:/home/node/app
+      - /home/node/app/node_modules
